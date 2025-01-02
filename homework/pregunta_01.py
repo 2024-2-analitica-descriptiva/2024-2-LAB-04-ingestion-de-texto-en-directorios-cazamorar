@@ -4,7 +4,9 @@
 """
 Escriba el codigo que ejecute la accion solicitada en cada pregunta.
 """
-
+import os
+import zipfile
+import csv
 
 def pregunta_01():
     """
@@ -68,6 +70,58 @@ def pregunta_01():
     |  3 | Both operating profit and net sales for the three-month period increased , respectively from EUR16 .0 m and EUR139m , as compared to the corresponding quarter in 2006 | positive |
     |  4 | Tampere Science Parks is a Finnish company that owns , leases and builds office properties and it specialises in facilities for technology-oriented businesses         | neutral  |
     ```
-
-
     """
+    # Define paths
+    zip_file_path = "files/input.zip"
+    unzip_folder_path = "files/input"
+    output_folder_path = "files/output"
+    train_csv_path = os.path.join(output_folder_path, "train_dataset.csv")
+    test_csv_path = os.path.join(output_folder_path, "test_dataset.csv")
+
+    # Ensure output folder exists
+    os.makedirs(output_folder_path, exist_ok=True)
+
+    def extract_zip(zip_path, extract_to):
+        """Extracts a zip file to the specified location."""
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_to)
+
+    def find_correct_base_path(base_path):
+        """Finds the correct base path by inspecting the folder structure."""
+        for root, dirs, _ in os.walk(base_path):
+            if "train" in dirs and "test" in dirs:
+                return root
+        return base_path
+
+    def read_txt_files_to_csv(base_path):
+        """Reads .txt files from directories and writes their content to CSV files."""
+        base_path = find_correct_base_path(base_path)  # Dynamically find correct base path
+        for split in ["train", "test"]:
+            split_path = os.path.join(base_path, split)
+            data = []
+            for sentiment in ["negative", "neutral", "positive"]:
+                sentiment_path = os.path.join(split_path, sentiment)
+                if not os.path.exists(sentiment_path):
+                    print(f"Directory not found: {sentiment_path}")
+                    continue
+
+                for txt_file in os.listdir(sentiment_path):
+                    if txt_file.endswith(".txt"):
+                        file_path = os.path.join(sentiment_path, txt_file)
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            phrase = f.read().strip()
+                            data.append({"phrase": phrase, "sentiment": sentiment})
+
+            # Write data to CSV
+            csv_file_path = train_csv_path if split == "train" else test_csv_path
+            with open(csv_file_path, mode='w', newline='', encoding='utf-8') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=["phrase", "sentiment"])
+                writer.writeheader()
+                writer.writerows(data)
+
+    # Step 1: Extract the zip file
+    extract_zip(zip_file_path, unzip_folder_path)
+
+    # Step 2: Process the extracted files and write to CSV
+    read_txt_files_to_csv(unzip_folder_path)
+
